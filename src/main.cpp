@@ -183,6 +183,7 @@ public:
 
     bool HandleEvents()
     {
+        std::vector<SDL_Event>().swap(events);
         SDL_Event event;
         while (SDL_PollEvent(&event) != 0)
         {
