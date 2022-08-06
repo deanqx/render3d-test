@@ -1,0 +1,6 @@
+#ifndef rc
+#define rc
+
+MainIcon ICON "cube.ico"
+
+#endif
