@@ -42,9 +42,18 @@ struct tri
 
 struct mesh
 {
-    float scaleX = 0.5f;
-    float scaleY = 0.5f;
     std::vector<tri> tris;
+
+    vec3 origin;
+    vec3 position;
+    float scaleX = 1.0f;
+    float scaleY = 1.0f;
+
+    void scale(float scale)
+    {
+        scaleX = scale;
+        scaleY = scale;
+    }
 };
 
 SDL_Window* window = nullptr;
@@ -136,8 +145,9 @@ public:
 
     render3d(const int width, const int height) : WIDTH(width), HEIGHT(height)
     {
-        meshCube.scaleX = 0.5f * (float)WIDTH;
-        meshCube.scaleY = 0.5f * (float)HEIGHT;
+        meshCube.scale((float)WIDTH * 0.5f);
+        meshCube.origin = {0.0f, 0.0f, 0.0f};
+        meshCube.position = {3.0f, 3.0f, 3.0f};
         meshCube.tris = {
 
             // SOUTH
@@ -277,7 +287,7 @@ public:
 
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 960
-#define SCREEN_ZOOM 1
+#define SCREEN_ZOOM 4
 #define WIDTH (SCREEN_WIDTH / SCREEN_ZOOM)
 #define HEIGHT (SCREEN_HEIGHT / SCREEN_ZOOM)
 
