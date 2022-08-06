@@ -9,10 +9,10 @@
 
 class render3d
 {
-public:
+private:
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
-private:
+
     const int WIDTH;
     const int HEIGHT;
 
@@ -27,9 +27,9 @@ public:
 
     render3d(SDL_Window* window, SDL_Renderer* renderer, const int width, const int height) : WIDTH(width), HEIGHT(height), window(window), renderer(renderer)
     {
-        meshCube.rescale(0.5f * (float)WIDTH);
-        meshCube.position = { 0.0f, 0.0f, 3.0f };
-
+        meshCube.rescale((float)WIDTH * 0.5f);
+        meshCube.origin = {0.0f, 0.0f, 0.0f};
+        meshCube.position = {0.0f, 0.0f, 3.0f};
         meshCube.tris = {
 
             // SOUTH
@@ -75,6 +75,7 @@ public:
 
     bool HandleEvents()
     {
+        std::vector<SDL_Event>().swap(events);
         SDL_Event event;
         while (SDL_PollEvent(&event) != 0)
         {
