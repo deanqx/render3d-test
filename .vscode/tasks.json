@@ -53,6 +53,7 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             },
+            "dependsOn": "Build: test",
             "command": "./test.exe"
         }
     ]

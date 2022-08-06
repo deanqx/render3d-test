@@ -67,7 +67,7 @@ void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
             }
             else
             {
-                py += dirX;
+                py += dirY;
                 SDL_RenderDrawPoint(renderer, px, py);
                 error += dx;
             }
@@ -78,9 +78,9 @@ void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
 int main()
 {
     DrawLine(255, 255, 255, 50, 50, 0, 0);
+    DrawLine(255, 255, 255, 50, 50, 0, 100);
     DrawLine(255, 255, 255, 50, 50, 100, 0);
     DrawLine(255, 255, 255, 50, 50, 100, 100);
-    DrawLine(255, 255, 255, 50, 50, 0, 100);
 
     return 0;
 }

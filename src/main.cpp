@@ -47,6 +47,7 @@ struct mesh
     std::vector<tri> tris;
 };
 
+SDL_Window* window = nullptr;
 SDL_Renderer* renderer = nullptr;
 
 void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
@@ -105,7 +106,7 @@ void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
             }
             else
             {
-                py += dirX;
+                py += dirY;
                 SDL_RenderDrawPoint(renderer, px, py);
                 error += dx;
             }
@@ -131,6 +132,8 @@ private:
     float fTheta = 0.0f;
 
 public:
+    std::vector<SDL_Event> events;
+
     render3d(const int width, const int height) : WIDTH(width), HEIGHT(height)
     {
         meshCube.scaleX = 0.5f * (float)WIDTH;
@@ -176,6 +179,27 @@ public:
         matProj.m[2][2] = pZScale;
         matProj.m[3][2] = pCameraOffset;
         matProj.m[2][3] = 1;
+    }
+
+    bool HandleEvents()
+    {
+        SDL_Event event;
+        while (SDL_PollEvent(&event) != 0)
+        {
+            switch (event.type)
+            {
+            case SDL_QUIT:
+                return 1;
+            case SDL_WINDOWEVENT_MINIMIZED:
+                printf("minimize");
+                break;
+            default:
+                events.push_back(event);
+                break;
+            }
+        }
+
+        return 0;
     }
 
     bool Update(float deltaTime)
@@ -240,27 +264,31 @@ public:
                 triProj.verts[2].x, triProj.verts[2].y);
         }
 
-        return true;
+        return 0;
+    }
+
+    void Quit()
+    {
+        SDL_DestroyWindow(window);
+        SDL_Quit();
     }
 };
 
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 960
-#define SCREEN_ZOOM 4
+#define SCREEN_ZOOM 1
 #define WIDTH (SCREEN_WIDTH / SCREEN_ZOOM)
 #define HEIGHT (SCREEN_HEIGHT / SCREEN_ZOOM)
 
 int main(int argc, char* argv[])
 {
-    SDL_Window* window = nullptr;
-
-    if (SDL_Init( SDL_INIT_VIDEO ) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
         return 2;
     window = SDL_CreateWindow("TEST", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
     if (!window)
         return 3;
 
-    renderer = SDL_CreateRenderer(window, -1, 0);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     SDL_RenderSetScale(renderer, SCREEN_ZOOM, SCREEN_ZOOM);
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -275,14 +303,17 @@ int main(int argc, char* argv[])
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
+        if (engine.HandleEvents())
+            break;
+
         std::chrono::duration<float> deltaTime = std::chrono::high_resolution_clock::now() - lastFrame;
         lastFrame = std::chrono::high_resolution_clock::now();
-        engine.Update(deltaTime.count());
+        if (engine.Update(deltaTime.count()))
+            break;
 
         SDL_RenderPresent(renderer);
     }
-
-    system("pause");
+    engine.Quit();
 
     return 0;
 }
