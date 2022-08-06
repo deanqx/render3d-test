@@ -53,18 +53,31 @@ void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
 {
     SDL_SetRenderDrawColor(renderer, r, g, b, 255);
 
-    int px = (int)startX;
-    int py = (int)startY;
-    float dx = endX - startX;
-    float dy = endY - startY;
+    int px = (int)startX; // positionX
+    int py = (int)startY; // positionX
+    float dx = (float)(std::abs(endX) - std::abs(startX)); // deltaX, deltaY
+    float dy = (float)(std::abs(endY) - std::abs(startY));
+
+    int dirX, dirY; // directionX, directionY
+    if (dx >= 0)
+        dirX = 1;
+    else
+        dirX = -1;
+    if (dy >= 0)
+        dirY = 1;
+    else
+        dirY = -1;
+
+    dx = std::abs(dx);
+    dy = std::abs(dy);
 
     SDL_RenderDrawPoint(renderer, px, py);
 
     if (dx < dy)
     {
-        ++py;
+        py += dirY;
         float error = dy * 0.5f;
-        for (int _dy = (int)dy, i = 0; i < _dy; ++i, ++py)
+        for (float i = 0; i < dy; ++i, py += dirY)
         {
             error -= dx;
             if (error > 0.0f)
@@ -73,7 +86,7 @@ void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
             }
             else
             {
-                ++px;
+                px += dirX;
                 SDL_RenderDrawPoint(renderer, px, py);
                 error += dy;
             }
@@ -81,9 +94,9 @@ void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
     }
     else
     {
-        ++px;
-        float error = dx * 0.5f;
-        for (int _dx = (int)dx, i = 0; i < _dx; ++i, ++px)
+        px += dirX;
+        float error = dy * 0.5f;
+        for (float i = 0; i < dx; ++i, px += dirX)
         {
             error -= dy;
             if (error > 0.0f)
@@ -92,7 +105,7 @@ void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
             }
             else
             {
-                ++py;
+                py += dirX;
                 SDL_RenderDrawPoint(renderer, px, py);
                 error += dx;
             }
@@ -233,7 +246,7 @@ public:
 
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 960
-#define SCREEN_ZOOM 8
+#define SCREEN_ZOOM 4
 #define WIDTH (SCREEN_WIDTH / SCREEN_ZOOM)
 #define HEIGHT (SCREEN_HEIGHT / SCREEN_ZOOM)
 
@@ -241,8 +254,12 @@ int main(int argc, char* argv[])
 {
     SDL_Window* window = nullptr;
 
-    SDL_Init(SDL_INIT_VIDEO);
-    window = SDL_CreateWindow("An SDL2 window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+    if (SDL_Init( SDL_INIT_VIDEO ) < 0)
+        return 2;
+    window = SDL_CreateWindow("TEST", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+    if (!window)
+        return 3;
+
     renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_RenderSetScale(renderer, SCREEN_ZOOM, SCREEN_ZOOM);
 
@@ -250,17 +267,10 @@ int main(int argc, char* argv[])
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
 
-    DrawLine(255, 255, 255, 50, 50, 0, 0);
-    DrawLine(255, 255, 255, 50, 50, 100, 0);
-    DrawLine(255, 255, 255, 50, 50, 100, 100);
-    DrawLine(255, 255, 255, 50, 50, 0, 100);
-    SDL_RenderPresent(renderer);
-    system("pause");
-
     render3d engine(WIDTH, HEIGHT);
 
     auto lastFrame = std::chrono::high_resolution_clock::now();
-    while (false)
+    while (true)
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
@@ -272,13 +282,7 @@ int main(int argc, char* argv[])
         SDL_RenderPresent(renderer);
     }
 
-    // SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    // SDL_RenderDrawPoint(renderer, 1, 1);
-    // SDL_RenderDrawPoint(renderer, 2, 2);
-    // SDL_RenderDrawPoint(renderer, 3, 3);
-    // SDL_RenderDrawPoint(renderer, 4, 4);
-    // SDL_RenderDrawPoint(renderer, 5, 5);
-    // SDL_RenderDrawPoint(renderer, 6, 6);
+    system("pause");
 
     return 0;
 }
