@@ -4,125 +4,14 @@
 #include <vector>
 #include <chrono>
 #include <math.h>
+#include "gmath.h"
 #include "SDL.h"
-
-struct mat4x4
-{
-    float m[4][4] = {};
-};
-
-struct vec3
-{
-    float x, y, z;
-
-    vec3 operator*(const mat4x4& m)
-    {
-        vec3 o;
-
-        o.x = x * m.m[0][0] + y * m.m[1][0] + z * m.m[2][0] + m.m[3][0];
-        o.y = x * m.m[0][1] + y * m.m[1][1] + z * m.m[2][1] + m.m[3][1];
-        o.z = x * m.m[0][2] + y * m.m[1][2] + z * m.m[2][2] + m.m[3][2];
-        float w = x * m.m[0][3] + y * m.m[1][3] + z * m.m[2][3] + m.m[3][3];
-
-        if (w != 0.0f) // Normalize by w
-        {
-            o.x /= w;
-            o.y /= w;
-            o.z /= w;
-        }
-
-        return o;
-    }
-};
-
-struct tri
-{
-    vec3 verts[3]; // vertices
-};
-
-struct mesh
-{
-    float scaleX = 0.5f;
-    float scaleY = 0.5f;
-    std::vector<tri> tris;
-};
-
-SDL_Window* window = nullptr;
-SDL_Renderer* renderer = nullptr;
-
-void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY)
-{
-    SDL_SetRenderDrawColor(renderer, r, g, b, 255);
-
-    int px = (int)startX; // positionX
-    int py = (int)startY; // positionX
-    float dx = (float)(std::abs(endX) - std::abs(startX)); // deltaX, deltaY
-    float dy = (float)(std::abs(endY) - std::abs(startY));
-
-    int dirX, dirY; // directionX, directionY
-    if (dx >= 0)
-        dirX = 1;
-    else
-        dirX = -1;
-    if (dy >= 0)
-        dirY = 1;
-    else
-        dirY = -1;
-
-    dx = std::abs(dx);
-    dy = std::abs(dy);
-
-    SDL_RenderDrawPoint(renderer, px, py);
-
-    if (dx < dy)
-    {
-        py += dirY;
-        float error = dy * 0.5f;
-        for (float i = 0; i < dy; ++i, py += dirY)
-        {
-            error -= dx;
-            if (error > 0.0f)
-            {
-                SDL_RenderDrawPoint(renderer, px, py);
-            }
-            else
-            {
-                px += dirX;
-                SDL_RenderDrawPoint(renderer, px, py);
-                error += dy;
-            }
-        }
-    }
-    else
-    {
-        px += dirX;
-        float error = dy * 0.5f;
-        for (float i = 0; i < dx; ++i, px += dirX)
-        {
-            error -= dy;
-            if (error > 0.0f)
-            {
-                SDL_RenderDrawPoint(renderer, px, py);
-            }
-            else
-            {
-                py += dirY;
-                SDL_RenderDrawPoint(renderer, px, py);
-                error += dx;
-            }
-        }
-    }
-}
-
-void DrawTriangle(int r, int g, int b, float x0, float y0, float x1, float y1, float x2, float y2)
-{
-    DrawLine(r, g, b, (int)x0, (int)y0, (int)x1, (int)y1);
-    DrawLine(r, g, b, (int)x1, (int)y1, (int)x2, (int)y2);
-    DrawLine(r, g, b, (int)x2, (int)y2, (int)x0, (int)y0);
-}
 
 class render3d
 {
+public:
+    SDL_Window* window = nullptr;
+    SDL_Renderer* renderer = nullptr;
 private:
     const int WIDTH;
     const int HEIGHT;
@@ -131,13 +20,16 @@ private:
     mat4x4 matProj; // matProjection
     float fTheta = 0.0f;
 
+    vec3 pCamera = { 0.0f, 0.0f, 0.0f };
+
 public:
     std::vector<SDL_Event> events;
 
-    render3d(const int width, const int height) : WIDTH(width), HEIGHT(height)
+    render3d(SDL_Window* window, SDL_Renderer* renderer, const int width, const int height) : WIDTH(width), HEIGHT(height), window(window), renderer(renderer)
     {
-        meshCube.scaleX = 0.5f * (float)WIDTH;
-        meshCube.scaleY = 0.5f * (float)HEIGHT;
+        meshCube.rescale(0.5f * (float)WIDTH);
+        meshCube.position = { 0.0f, 0.0f, 3.0f };
+
         meshCube.tris = {
 
             // SOUTH
@@ -170,7 +62,7 @@ public:
         float pZfar = 1000.0f;
         float pFov = 90.0f;
         float pAspectRatio = (float)HEIGHT / (float)WIDTH;
-        float pFovScale = 1.0f / tanf(pFov * 0.5f); // Degree
+        float pFovScale = 1.0f / tanf(pFov * 0.5f / 180.0f * 3.14159f); // Radian
         float pZScale = pZfar / (pZfar - pZnear);
         float pCameraOffset = -pZnear * pZScale; // (-pZfar * pZnear) / (pZfar - pZnear)
 
@@ -227,41 +119,55 @@ public:
         {
             tri triProj, triTrans, triRotatedZX;  // triProjected, triTranslated
 
-            triRotatedZX.verts[0] = (t.verts[0] * matRotZ) * matRotX;
-            triRotatedZX.verts[1] = (t.verts[1] * matRotZ) * matRotX;
-            triRotatedZX.verts[2] = (t.verts[2] * matRotZ) * matRotX;
-
-            // Translation
-            triTrans = triRotatedZX;
-            triTrans.verts[0].z = triRotatedZX.verts[0].z + 3.0f;
-            triTrans.verts[1].z = triRotatedZX.verts[1].z + 3.0f;
-            triTrans.verts[2].z = triRotatedZX.verts[2].z + 3.0f;
-
-            // Projection
-            triProj.verts[0] = triTrans.verts[0] * matProj;
-            triProj.verts[1] = triTrans.verts[1] * matProj;
-            triProj.verts[2] = triTrans.verts[2] * matProj;
+            triRotatedZX.p[0] = t.p[0] * matRotZ * matRotX;
+            triRotatedZX.p[1] = t.p[1] * matRotZ * matRotX;
+            triRotatedZX.p[2] = t.p[2] * matRotZ * matRotX;
 
             // Position
-            triProj.verts[0].x += 1.0f;
-            triProj.verts[1].x += 1.0f;
-            triProj.verts[2].x += 1.0f;
-            triProj.verts[0].y += 1.0f;
-            triProj.verts[1].y += 1.0f;
-            triProj.verts[2].y += 1.0f;
+            triTrans = triRotatedZX;
+            triTrans.p[0] = triRotatedZX.p[0] + meshCube.position;
+            triTrans.p[1] = triRotatedZX.p[1] + meshCube.position;
+            triTrans.p[2] = triRotatedZX.p[2] + meshCube.position;
 
-            // Scale
-            triProj.verts[0].x *= meshCube.scaleX;
-            triProj.verts[1].x *= meshCube.scaleX;
-            triProj.verts[2].x *= meshCube.scaleX;
-            triProj.verts[0].y *= meshCube.scaleY;
-            triProj.verts[1].y *= meshCube.scaleY;
-            triProj.verts[2].y *= meshCube.scaleY;
+            vec3 normal, line1, line2;
+            line1 = triTrans.p[1] - triTrans.p[0];
+            line2 = triTrans.p[2] - triTrans.p[0];
 
-            DrawTriangle(255, 255, 255,
-                triProj.verts[0].x, triProj.verts[0].y,
-                triProj.verts[1].x, triProj.verts[1].y,
-                triProj.verts[2].x, triProj.verts[2].y);
+            normal.x = line1.y * line2.z - line1.z * line2.y;
+            normal.y = line1.z * line2.x - line1.x * line2.z;
+            normal.z = line1.x * line2.y - line1.y * line2.x;
+            normal.normalize();
+
+            if (normal.dot(triTrans.p[0] - pCamera) < 0.0f)
+            {
+                // Project triangles from 3D --> 2D
+                triProj.p[0] = triTrans.p[0] * matProj;
+                triProj.p[1] = triTrans.p[1] * matProj;
+                triProj.p[2] = triTrans.p[2] * matProj;
+
+                // Scale into view
+                triProj.p[0].x += 1.0f; triProj.p[0].y += 1.0f;
+                triProj.p[1].x += 1.0f; triProj.p[1].y += 1.0f;
+                triProj.p[2].x += 1.0f; triProj.p[2].y += 1.0f;
+                triProj.p[0].x *= 0.5f * (float)WIDTH;
+                triProj.p[0].y *= 0.5f * (float)HEIGHT;
+                triProj.p[1].x *= 0.5f * (float)WIDTH;
+                triProj.p[1].y *= 0.5f * (float)HEIGHT;
+                triProj.p[2].x *= 0.5f * (float)WIDTH;
+                triProj.p[2].y *= 0.5f * (float)HEIGHT;
+
+                // Optimization: Draw only if in view
+                if (WIDTH > triProj.p[0].x && HEIGHT > triProj.p[0].y
+                    && WIDTH > triProj.p[1].x && HEIGHT > triProj.p[1].y
+                    && WIDTH > triProj.p[2].x && HEIGHT > triProj.p[2].y)
+                {
+
+                    DrawTriangle(255, 255, 255,
+                        triProj.p[0].x, triProj.p[0].y,
+                        triProj.p[1].x, triProj.p[1].y,
+                        triProj.p[2].x, triProj.p[2].y);
+                }
+            }
         }
 
         return 0;
@@ -276,26 +182,27 @@ public:
 
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 960
-#define SCREEN_ZOOM 1
-#define WIDTH (SCREEN_WIDTH / SCREEN_ZOOM)
-#define HEIGHT (SCREEN_HEIGHT / SCREEN_ZOOM)
+#define SCREEN_SCALE 1
+#define WIDTH (SCREEN_WIDTH / SCREEN_SCALE)
+#define HEIGHT (SCREEN_HEIGHT / SCREEN_SCALE)
 
 int main(int argc, char* argv[])
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
         return 2;
-    window = SDL_CreateWindow("TEST", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+    SDL_Window* window = SDL_CreateWindow("render3d-test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
     if (!window)
         return 3;
 
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    SDL_RenderSetScale(renderer, SCREEN_ZOOM, SCREEN_ZOOM);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    SDL_RenderSetScale(renderer, SCREEN_SCALE, SCREEN_SCALE);
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
 
-    render3d engine(WIDTH, HEIGHT);
+    INIT(window, renderer);
+    render3d engine(window, renderer, WIDTH, HEIGHT);
 
     auto lastFrame = std::chrono::high_resolution_clock::now();
     while (true)

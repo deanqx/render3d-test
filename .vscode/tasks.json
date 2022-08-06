@@ -16,6 +16,7 @@
                 "./res/icon.res",
                 "-g",
                 "-Iinclude",
+                "-Iinclude/SDL2",
                 "-Llib",
                 "-lSDL2main",
                 "-lSDL2",
