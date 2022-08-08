@@ -163,13 +163,14 @@ public:
                     && WIDTH > triProj.p[1].x && HEIGHT > triProj.p[1].y
                     && WIDTH > triProj.p[2].x && HEIGHT > triProj.p[2].y)
                 {
-
-                    // FillTriangle(0, 0, 255, 255, 0, 0, 0, 255, 0,
-                    //     triProj.p[0].x, triProj.p[0].y,
-                    //     triProj.p[1].x, triProj.p[1].y,
-                    //     triProj.p[2].x, triProj.p[2].y);
-                    FillTriangle({255, 0, 0}, {0, 0, 255}, {0, 255, 0}, {8, 1}, {1, 8}, {9, 10});
-                    return 1;
+                    FillTriangle({ 0, 0, 255 }, { 255, 0, 0 }, { 0, 255, 0 },
+                        { (int)triProj.p[0].x, (int)triProj.p[0].y },
+                        { (int)triProj.p[1].x, (int)triProj.p[1].y },
+                        { (int)triProj.p[2].x, (int)triProj.p[2].y });
+                    // FillTriangle({ 0, 0, 255 }, { 255, 0, 0 }, { 0, 255, 0 },
+                    //     { 2, 0 },
+                    //     { 1, 9 },
+                    //     { 11, 10 });
                 }
             }
         }
@@ -187,7 +188,7 @@ public:
 #define TITLE "render3d-test"
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 960
-#define SCREEN_SCALE 64
+#define SCREEN_SCALE 2 // Resolution
 #define WIDTH (SCREEN_WIDTH / SCREEN_SCALE)
 #define HEIGHT (SCREEN_HEIGHT / SCREEN_SCALE)
 
@@ -202,24 +203,11 @@ int main(int argc, char* argv[])
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     SDL_RenderSetScale(renderer, SCREEN_SCALE, SCREEN_SCALE);
 
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderPresent(renderer);
-
     INIT(window, renderer, WIDTH, HEIGHT);
     render3d engine(window, renderer, WIDTH, HEIGHT);
 
-
-    // SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    // SDL_RenderClear(renderer);
-
-    // FillTriangle(255, 0, 0, 0, 255, 0, 0, 0, 255, 8.0f, 1.0f, 9.0f, 10.0f, 1.0f, 8.0f);
-    // // DrawTriangle(0, 0, 255, 8.0f, 1.0f, 9.0f, 10.0f, 1.0f, 8.0f);
-
-    // SDL_RenderPresent(renderer);
-    // system("pause");
-
-    auto lastFrame = std::chrono::high_resolution_clock::now();
+    auto displayedFPS = std::chrono::high_resolution_clock::now();
+    auto lastFrame = displayedFPS;
     for (int frame = 1; true; ++frame)
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -233,15 +221,16 @@ int main(int argc, char* argv[])
         if (engine.Update((float)deltaTime.count()))
             break;
 
-        if (frame % 165 == 0)
+        std::chrono::duration<float> lastDisplayedFPS = std::chrono::high_resolution_clock::now() - displayedFPS;
+        if (1.0f <= lastDisplayedFPS.count())
         {
-            float fps = 1.0f / (float)deltaTime.count(); // Second / One frame
+            displayedFPS = std::chrono::high_resolution_clock::now();
+            float fps = 1.0f / deltaTime.count();
 
             std::stringstream title;
-            title << TITLE << " - " << (int)fps << " FPS";
+            title << TITLE << " - " << frame << " FPS - " << (int)fps << " lowFPS";
 
             SDL_SetWindowTitle(window, title.str().c_str());
-
             frame = 0;
         }
 

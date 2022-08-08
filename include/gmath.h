@@ -55,5 +55,6 @@ struct color2
 };
 
 void DrawLine(color c, vec2 begin, vec2 end);
+void DrawLine(color c0, color c1, vec2 begin, vec2 end);
 void DrawTriangle(color c, vec2 v0, vec2 v1, vec2 v2);
 void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2);

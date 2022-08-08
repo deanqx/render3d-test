@@ -84,7 +84,7 @@ std::vector<vec2> bresenham(vec2 begin, vec2 end)
 {
     vec2 p;
     p.x = begin.x; // positionX
-    p.y = begin.y; // positionX
+    p.y = begin.y; // positionY
     float dx = (float)(std::abs(end.x) - std::abs(begin.x)); // deltaX
     float dy = (float)(std::abs(end.y) - std::abs(begin.y)); // deltaY
 
@@ -116,7 +116,7 @@ std::vector<vec2> bresenham(vec2 begin, vec2 end)
         for (float i = 0; i < dy; ++i, p.y += dirY)
         {
             error -= dx;
-            if (error >= 0.0f)
+            if (error > 0.0f)
             {
                 pos.push_back(p);
             }
@@ -138,7 +138,7 @@ std::vector<vec2> bresenham(vec2 begin, vec2 end)
         for (float i = 0; i < dx; ++i, p.x += dirX)
         {
             error -= dy;
-            if (error >= 0.0f)
+            if (error > 0.0f)
             {
                 pos.push_back(p);
             }
@@ -154,48 +154,12 @@ std::vector<vec2> bresenham(vec2 begin, vec2 end)
     return pos;
 }
 
-// @return colors[y][x]
-void DrawLine(color c0, color c1, vec2 begin, vec2 end, int& height)
-{
-    int top;
-    int bottom;
-    if (begin.y > end.y) bottom = begin.y;
-    if (end.y > begin.y) bottom = end.y;
-    if (begin.y < end.y) top = begin.y;
-    if (end.y < begin.y) top = end.y;
-
-    height = bottom - top + 1;
-
-    std::vector<std::vector<color2*>> colors(HEIGHT, std::vector<color2*>(WIDTH));
-    std::vector<vec2> bresen = bresenham(begin, end);
-
-    float total = (float)bresen.size() - 1.0f;
-    float A = total - 1.0f;
-    int B = 1;
-    float p0;
-    float p1;
-    for (int r, g, b; A > 0.0f; --A, ++B)
-    {
-        p0 = A / total;
-        p1 = B / total;
-        r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
-        g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
-        b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
-
-        SDL_SetRenderDrawColor(renderer, r, g, b, 255);
-        SDL_RenderDrawPoint(renderer, bresen[B].x, bresen[B].y);
-        colors[bresen[B].y][bresen[B].x] = new color2{ { bresen[B].x, bresen[B].y }, { r, g, b } };
-    }
-
-    return colors;
-}
-
 void DrawLine(color c, vec2 begin, vec2 end)
 {
     int& px = begin.x; // positionX
-    int& py = begin.y; // positionX
-    float dx = (float)(std::abs(end.x) - std::abs(begin.x)); // deltaX, deltaY
-    float dy = (float)(std::abs(end.y) - std::abs(begin.y));
+    int& py = begin.y; // positionY
+    float dx = (float)(std::abs(end.x) - std::abs(begin.x)); // deltaX
+    float dy = (float)(std::abs(end.y) - std::abs(begin.y)); // deltaY
 
     int dirX, dirY; // directionX, directionY
     if (dx >= 0.0f)
@@ -221,7 +185,7 @@ void DrawLine(color c, vec2 begin, vec2 end)
         for (float i = 0; i < dy; ++i, py += dirY)
         {
             error -= dx;
-            if (error >= 0.0f)
+            if (error > 0.0f)
             {
                 SDL_RenderDrawPoint(renderer, px, py);
             }
@@ -241,7 +205,7 @@ void DrawLine(color c, vec2 begin, vec2 end)
         for (float i = 0; i < dx; ++i, px += dirX)
         {
             error -= dy;
-            if (error >= 0.0f)
+            if (error > 0.0f)
             {
                 SDL_RenderDrawPoint(renderer, px, py);
             }
@@ -255,6 +219,87 @@ void DrawLine(color c, vec2 begin, vec2 end)
     }
 }
 
+// @return colors[y][x]
+void DrawLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<color2*>>& colors)
+{
+    std::vector<vec2> bresen = bresenham(begin, end);
+    const int last = bresen.size() - 1;
+
+    SDL_SetRenderDrawColor(renderer, c0.r, c0.g, c0.b, 255);
+    SDL_RenderDrawPoint(renderer, bresen[0].x, bresen[0].y);
+    colors[bresen[0].y][bresen[0].x] = new color2{ { bresen[0].x, bresen[0].y }, { c0.r, c0.g, c0.b } };
+    SDL_SetRenderDrawColor(renderer, c1.r, c1.g, c1.b, 255);
+    SDL_RenderDrawPoint(renderer, bresen[last].x, bresen[last].y);
+    colors[bresen[last].y][bresen[last].x] = new color2{ { bresen[last].x, bresen[last].y }, { c1.r, c1.g, c1.b } };
+
+    const float total = (float)bresen.size() - 1.0f;
+    float A = total - 1.0f;
+    int B = 1;
+    float p0;
+    float p1;
+    for (int r, g, b; A > 0.0f; --A, ++B)
+    {
+        p0 = A / total;
+        p1 = B / total;
+        r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
+        g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
+        b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
+
+        SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+        SDL_RenderDrawPoint(renderer, bresen[B].x, bresen[B].y);
+        colors[bresen[B].y][bresen[B].x] = new color2{ { bresen[B].x, bresen[B].y }, { r, g, b } };
+    }
+}
+
+void DrawVerticalLine(color c0, color c1, vec2 begin, vec2 end)
+{
+    const float total = (float)(end.x - begin.x); // TODO Check
+    float A = total - 1.0f;
+    int B = 1;
+    float p0;
+    float p1;
+    for (int r, g, b; A > 0.0f; --A, ++B)
+    {
+        p0 = A / total;
+        p1 = B / total;
+        r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
+        g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
+        b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
+
+        SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+        SDL_RenderDrawPoint(renderer, begin.x + B, begin.y);
+        SDL_RenderPresent(renderer);
+    }
+}
+
+void DrawLine(color c0, color c1, vec2 begin, vec2 end)
+{
+    std::vector<vec2> bresen = bresenham(begin, end);
+    const int last = bresen.size() - 1;
+
+    SDL_SetRenderDrawColor(renderer, c0.r, c0.g, c0.b, 255);
+    SDL_RenderDrawPoint(renderer, bresen[0].x, bresen[0].y);
+    SDL_SetRenderDrawColor(renderer, c1.r, c1.g, c1.b, 255);
+    SDL_RenderDrawPoint(renderer, bresen[last].x, bresen[last].y);
+
+    const float total = (float)bresen.size() - 1.0f;
+    float A = total - 1.0f;
+    int B = 1;
+    float p0;
+    float p1;
+    for (int r, g, b; A > 0.0f; --A, ++B)
+    {
+        p0 = A / total;
+        p1 = B / total;
+        r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
+        g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
+        b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
+
+        SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+        SDL_RenderDrawPoint(renderer, bresen[B].x, bresen[B].y);
+    }
+}
+
 void DrawTriangle(color c, vec2 v0, vec2 v1, vec2 v2)
 {
     DrawLine(c, v0, v1);
@@ -264,51 +309,78 @@ void DrawTriangle(color c, vec2 v0, vec2 v1, vec2 v2)
 
 void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2)
 {
-    int height0, height1, height2;
-    std::vector<std::vector<color2*>> colors(HEIGHT, std::vector<color2*>(WIDTH));
-    DrawLine(c0, c0, v0, v1, height0); // TODO Delete
-    DrawLine(c1, c1, v1, v2, height1);
-    DrawLine(c2, c2, v2, v0, height2);
+    std::vector<std::vector<color2*>> screen(HEIGHT, std::vector<color2*>(WIDTH));
+    DrawLine(c0, c1, v0, v1, screen);
+    DrawLine(c1, c2, v1, v2, screen);
+    DrawLine(c2, c0, v2, v0, screen);
 
     // Scanline Algorithm
-
-    int height;
-    if (height0 > height1 && height0 > height2) height = height0;
-    if (height1 > height2 && height1 > height0) height = height1;
-    if (height2 > height0 && height2 > height1) height = height2;
 
     std::vector<std::vector<color2*>> all_x_on_y(HEIGHT); // all_x_on_y[y][x]
 
     for (int y = 0; y < HEIGHT; ++y)
     {
+        all_x_on_y[y].reserve(2);
+
         for (int x = 0; x < WIDTH; ++x)
         {
-            if (colors0[y][x] != nullptr)
+            if (screen[y][x] != nullptr)
             {
-                all_x_on_y[y].push_back(colors0[y][x]);
+                all_x_on_y[y].push_back(screen[y][x]);
             }
-            else
-                if (colors1[y][x] != nullptr)
-                {
-                    all_x_on_y[y].push_back(colors1[y][x]);
-                }
-                else
-                    if (colors2[y][x] != nullptr)
-                    {
-                        all_x_on_y[y].push_back(colors2[y][x]);
-                    }
         }
+
+        if (all_x_on_y[y].size() == 1)
+        {
+            all_x_on_y[y].push_back(all_x_on_y[y][0]);
+        }
+    }
+
+    // for (int y = 0; y < HEIGHT; ++y)
+    // {
+    //     if (all_x_on_y[y].size() > 0)
+    //     {
+    //         color2* x0 = all_x_on_y[y][all_x_on_y[y].size() - 2];
+    //         color2* x1 = all_x_on_y[y][all_x_on_y[y].size() - 1];
+
+    //         DrawLine(x0->c, x1->c, x0->pos, x1->pos);
+    //     }
+    // }
+
+    {
+        color2* x0 = nullptr;
+        color2* x1 = nullptr;
+        int y = 0;
+        for (; y < HEIGHT; ++y)
+        {
+            if (all_x_on_y[y].size() > 0)
+            {
+                x0 = all_x_on_y[y][0];
+                x1 = all_x_on_y[y][all_x_on_y[y].size() - 1];
+
+                DrawVerticalLine(x0->c, x1->c, x0->pos, x1->pos);
+                // SDL_RenderPresent(renderer);
+                // x1 = nullptr;
+                // break;
+            }
+        }
+        // for (; y < HEIGHT; ++y)
+        // {
+        //     if (all_x_on_y[y].size() > 0)
+        //     {
+        //         for 
+        //         color2* x1 = all_x_on_y[y][all_x_on_y[y].size() - 2];
+
+        //         DrawLine(x0->c, x1->c, x0->pos, x1->pos);
+        //     }
+        // }
     }
 
     for (int y = 0; y < HEIGHT; ++y)
     {
-        if (all_x_on_y[y].size() > 0)
+        for (int x = 0; x < WIDTH; ++x)
         {
-            color2* last1 = all_x_on_y[y][all_x_on_y[y].size() - 2];
-            color2* last2 = all_x_on_y[y][all_x_on_y[y].size() - 1];
-
-            int h;
-            DrawLine(last1->c, last2->c, last1->pos, last2->pos, h);
+            delete screen[y][x];
         }
     }
 }
