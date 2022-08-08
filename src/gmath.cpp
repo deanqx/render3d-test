@@ -253,7 +253,7 @@ void DrawLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<
 
 void DrawVerticalLine(color c0, color c1, vec2 begin, vec2 end)
 {
-    const float total = (float)(end.x - begin.x); // TODO Check
+    const float total = (float)(end.x - begin.x);
     float A = total - 1.0f;
     int B = 1;
     float p0;
@@ -268,7 +268,6 @@ void DrawVerticalLine(color c0, color c1, vec2 begin, vec2 end)
 
         SDL_SetRenderDrawColor(renderer, r, g, b, 255);
         SDL_RenderDrawPoint(renderer, begin.x + B, begin.y);
-        SDL_RenderPresent(renderer);
     }
 }
 
@@ -336,44 +335,17 @@ void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2)
         }
     }
 
-    // for (int y = 0; y < HEIGHT; ++y)
-    // {
-    //     if (all_x_on_y[y].size() > 0)
-    //     {
-    //         color2* x0 = all_x_on_y[y][all_x_on_y[y].size() - 2];
-    //         color2* x1 = all_x_on_y[y][all_x_on_y[y].size() - 1];
-
-    //         DrawLine(x0->c, x1->c, x0->pos, x1->pos);
-    //     }
-    // }
-
+    color2* x0 = nullptr;
+    color2* x1 = nullptr;
+    for (int y = 0; y < HEIGHT; ++y)
     {
-        color2* x0 = nullptr;
-        color2* x1 = nullptr;
-        int y = 0;
-        for (; y < HEIGHT; ++y)
+        if (all_x_on_y[y].size() > 0)
         {
-            if (all_x_on_y[y].size() > 0)
-            {
-                x0 = all_x_on_y[y][0];
-                x1 = all_x_on_y[y][all_x_on_y[y].size() - 1];
+            x0 = all_x_on_y[y][0];
+            x1 = all_x_on_y[y][all_x_on_y[y].size() - 1];
 
-                DrawVerticalLine(x0->c, x1->c, x0->pos, x1->pos);
-                // SDL_RenderPresent(renderer);
-                // x1 = nullptr;
-                // break;
-            }
+            DrawVerticalLine(x0->c, x1->c, x0->pos, x1->pos);
         }
-        // for (; y < HEIGHT; ++y)
-        // {
-        //     if (all_x_on_y[y].size() > 0)
-        //     {
-        //         for 
-        //         color2* x1 = all_x_on_y[y][all_x_on_y[y].size() - 2];
-
-        //         DrawLine(x0->c, x1->c, x0->pos, x1->pos);
-        //     }
-        // }
     }
 
     for (int y = 0; y < HEIGHT; ++y)
