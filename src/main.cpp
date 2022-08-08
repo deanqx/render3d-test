@@ -4,6 +4,7 @@
 #include <vector>
 #include <chrono>
 #include <math.h>
+#include <sstream>
 #include "gmath.h"
 #include "SDL.h"
 
@@ -25,11 +26,11 @@ private:
 public:
     std::vector<SDL_Event> events;
 
-    render3d(SDL_Window* window, SDL_Renderer* renderer, const int width, const int height) : WIDTH(width), HEIGHT(height), window(window), renderer(renderer)
+    render3d(SDL_Window* window, SDL_Renderer* renderer, const int width, const int height) : window(window), renderer(renderer), WIDTH(width), HEIGHT(height)
     {
         meshCube.rescale((float)WIDTH * 0.5f);
-        meshCube.origin = {0.0f, 0.0f, 0.0f};
-        meshCube.position = {0.0f, 0.0f, 3.0f};
+        meshCube.origin = { 0.0f, 0.0f, 0.0f };
+        meshCube.position = { 0.0f, 0.0f, 3.0f };
         meshCube.tris = {
 
             // SOUTH
@@ -163,10 +164,12 @@ public:
                     && WIDTH > triProj.p[2].x && HEIGHT > triProj.p[2].y)
                 {
 
-                    DrawTriangle(255, 255, 255,
-                        triProj.p[0].x, triProj.p[0].y,
-                        triProj.p[1].x, triProj.p[1].y,
-                        triProj.p[2].x, triProj.p[2].y);
+                    // FillTriangle(0, 0, 255, 255, 0, 0, 0, 255, 0,
+                    //     triProj.p[0].x, triProj.p[0].y,
+                    //     triProj.p[1].x, triProj.p[1].y,
+                    //     triProj.p[2].x, triProj.p[2].y);
+                    FillTriangle({255, 0, 0}, {0, 0, 255}, {0, 255, 0}, {8, 1}, {1, 8}, {9, 10});
+                    return 1;
                 }
             }
         }
@@ -181,9 +184,10 @@ public:
     }
 };
 
+#define TITLE "render3d-test"
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 960
-#define SCREEN_SCALE 1
+#define SCREEN_SCALE 64
 #define WIDTH (SCREEN_WIDTH / SCREEN_SCALE)
 #define HEIGHT (SCREEN_HEIGHT / SCREEN_SCALE)
 
@@ -191,7 +195,7 @@ int main(int argc, char* argv[])
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
         return 2;
-    SDL_Window* window = SDL_CreateWindow("render3d-test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+    SDL_Window* window = SDL_CreateWindow(TITLE, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
     if (!window)
         return 3;
 
@@ -202,11 +206,21 @@ int main(int argc, char* argv[])
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
 
-    INIT(window, renderer);
+    INIT(window, renderer, WIDTH, HEIGHT);
     render3d engine(window, renderer, WIDTH, HEIGHT);
 
+
+    // SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    // SDL_RenderClear(renderer);
+
+    // FillTriangle(255, 0, 0, 0, 255, 0, 0, 0, 255, 8.0f, 1.0f, 9.0f, 10.0f, 1.0f, 8.0f);
+    // // DrawTriangle(0, 0, 255, 8.0f, 1.0f, 9.0f, 10.0f, 1.0f, 8.0f);
+
+    // SDL_RenderPresent(renderer);
+    // system("pause");
+
     auto lastFrame = std::chrono::high_resolution_clock::now();
-    while (true)
+    for (int frame = 1; true; ++frame)
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
@@ -216,8 +230,20 @@ int main(int argc, char* argv[])
 
         std::chrono::duration<float> deltaTime = std::chrono::high_resolution_clock::now() - lastFrame;
         lastFrame = std::chrono::high_resolution_clock::now();
-        if (engine.Update(deltaTime.count()))
+        if (engine.Update((float)deltaTime.count()))
             break;
+
+        if (frame % 165 == 0)
+        {
+            float fps = 1.0f / (float)deltaTime.count(); // Second / One frame
+
+            std::stringstream title;
+            title << TITLE << " - " << (int)fps << " FPS";
+
+            SDL_SetWindowTitle(window, title.str().c_str());
+
+            frame = 0;
+        }
 
         SDL_RenderPresent(renderer);
     }

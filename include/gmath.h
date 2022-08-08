@@ -2,7 +2,7 @@
 
 #include "SDL.h"
 
-void INIT(SDL_Window* window, SDL_Renderer* renderer);
+void INIT(SDL_Window* window, SDL_Renderer* renderer, int width, int height);
 
 struct mat4x4
 {
@@ -38,5 +38,22 @@ struct mesh
     void rescale(float scaler);
 };
 
-void DrawLine(int r, int g, int b, int startX, int startY, int endX, int endY);
-void DrawTriangle(int r, int g, int b, float x0, float y0, float x1, float y1, float x2, float y2);
+struct vec2
+{
+    int x, y;
+};
+
+struct color
+{
+    int r, g, b;
+};
+
+struct color2
+{
+    vec2 pos;
+    color c;
+};
+
+void DrawLine(color c, vec2 begin, vec2 end);
+void DrawTriangle(color c, vec2 v0, vec2 v1, vec2 v2);
+void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2);
