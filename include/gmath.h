@@ -1,8 +1,9 @@
 #pragma once
 
+#include "timer.h"
 #include "SDL.h"
 
-void INIT(SDL_Window* window, SDL_Renderer* renderer, int width, int height);
+void INIT(SDL_Window* window, SDL_Renderer* renderer, int width, int height, Timer* t);
 
 struct mat4x4
 {

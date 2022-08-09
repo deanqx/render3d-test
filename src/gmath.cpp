@@ -10,12 +10,15 @@ SDL_Renderer* renderer = nullptr;
 int WIDTH;
 int HEIGHT;
 
-void INIT(SDL_Window* win, SDL_Renderer* ren, int w, int h)
+Timer* t2;
+
+void INIT(SDL_Window* win, SDL_Renderer* ren, int w, int h, Timer* ti)
 {
     window = win;
     renderer = ren;
     WIDTH = w;
     HEIGHT = h;
+    t2 = ti;
 }
 
 float vec3::lenght()
@@ -82,6 +85,9 @@ void mesh::rescale(float scaler)
 
 std::vector<vec2> bresenham(vec2 begin, vec2 end)
 {
+    Timer::perf performance(t2, "besenham");
+
+
     vec2 p;
     p.x = begin.x; // positionX
     p.y = begin.y; // positionY
@@ -156,6 +162,9 @@ std::vector<vec2> bresenham(vec2 begin, vec2 end)
 
 void DrawLine(color c, vec2 begin, vec2 end)
 {
+    Timer::perf performance(t2, "DrawLine(color, vec2, vec2)");
+
+
     int& px = begin.x; // positionX
     int& py = begin.y; // positionY
     float dx = (float)(std::abs(end.x) - std::abs(begin.x)); // deltaX
@@ -225,6 +234,8 @@ void DrawLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<
     std::vector<vec2> bresen = bresenham(begin, end);
     const int last = bresen.size() - 1;
 
+    Timer::perf performance(t2, "DrawLine(color, color, vec2, vec2)");
+
     SDL_SetRenderDrawColor(renderer, c0.r, c0.g, c0.b, 255);
     SDL_RenderDrawPoint(renderer, bresen[0].x, bresen[0].y);
     colors[bresen[0].y][bresen[0].x] = new color2{ { bresen[0].x, bresen[0].y }, { c0.r, c0.g, c0.b } };
@@ -253,6 +264,8 @@ void DrawLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<
 
 void DrawVerticalLine(color c0, color c1, vec2 begin, vec2 end)
 {
+    Timer::perf performance(t2, "DrawVerticalLine");
+
     const float total = (float)(end.x - begin.x);
     float A = total - 1.0f;
     int B = 1;
@@ -308,6 +321,8 @@ void DrawTriangle(color c, vec2 v0, vec2 v1, vec2 v2)
 
 void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2)
 {
+    Timer::perf performance(t2, "FillTriangle");
+
     std::vector<std::vector<color2*>> screen(HEIGHT, std::vector<color2*>(WIDTH));
     DrawLine(c0, c1, v0, v1, screen);
     DrawLine(c1, c2, v1, v2, screen);
