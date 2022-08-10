@@ -21,6 +21,7 @@ void INIT(SDL_Window* win, SDL_Renderer* ren, int w, int h, Timer* ti)
     t2 = ti;
 }
 
+// TODO Add const
 float vec3::lenght()
 {
     return sqrtf(x * x + y * y + z * z);
@@ -243,15 +244,16 @@ void DrawLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<
     SDL_RenderDrawPoint(renderer, bresen[last].x, bresen[last].y);
     colors[bresen[last].y][bresen[last].x] = new color2{ { bresen[last].x, bresen[last].y }, { c1.r, c1.g, c1.b } };
 
-    const float total = (float)bresen.size() - 1.0f;
-    float A = total - 1.0f;
+    const float bresen_t = (float)bresen.size() - 1.0f;
+    const float t = 1.0f / bresen_t;
+    float A = bresen_t - 1.0f;
     int B = 1;
-    float p0;
-    float p1;
-    for (int r, g, b; A > 0.0f; --A, ++B)
+    float p0, p1;
+    int r, g, b;
+    for (; A > 0.0f; --A, ++B)
     {
-        p0 = A / total;
-        p1 = B / total;
+        p0 = A * t;
+        p1 = B * t;
         r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
         g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
         b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
@@ -262,25 +264,27 @@ void DrawLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<
     }
 }
 
-void DrawVerticalLine(color c0, color c1, vec2 begin, vec2 end)
+void DrawVerticalLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<color2*>>* colors)
 {
+    std::vector<vec2> bresen = bresenham(begin, end);
+
     Timer::perf performance(t2, "DrawVerticalLine");
 
-    const float total = (float)(end.x - begin.x);
-    float A = total - 1.0f;
+    const float bresen_t = (float)bresen.size() - 1.0f;
+    const float t = 1.0f / bresen_t;
+    float A = bresen_t - 1.0f;
     int B = 1;
-    float p0;
-    float p1;
-    for (int r, g, b; A > 0.0f; --A, ++B)
+    float p0, p1;
+    int r, g, b;
+    for (; A > 0.0f; --A, ++B)
     {
-        p0 = A / total;
-        p1 = B / total;
+        p0 = A * t;
+        p1 = B * t;
         r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
         g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
         b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
 
-        SDL_SetRenderDrawColor(renderer, r, g, b, 255);
-        SDL_RenderDrawPoint(renderer, begin.x + B, begin.y);
+        (*colors)[bresen[B].y][bresen[B].x] = new color2{ { bresen[B].x, bresen[B].y }, { r, g, b } };
     }
 }
 
@@ -294,15 +298,16 @@ void DrawLine(color c0, color c1, vec2 begin, vec2 end)
     SDL_SetRenderDrawColor(renderer, c1.r, c1.g, c1.b, 255);
     SDL_RenderDrawPoint(renderer, bresen[last].x, bresen[last].y);
 
-    const float total = (float)bresen.size() - 1.0f;
-    float A = total - 1.0f;
+    const float bresen_t = (float)bresen.size() - 1.0f;
+    const float t = 1.0f / bresen_t;
+    float A = bresen_t - 1.0f;
     int B = 1;
-    float p0;
-    float p1;
-    for (int r, g, b; A > 0.0f; --A, ++B)
+    float p0, p1;
+    int r, g, b;
+    for (; A > 0.0f; --A, ++B)
     {
-        p0 = A / total;
-        p1 = B / total;
+        p0 = A * t;
+        p1 = B * t;
         r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
         g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
         b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
@@ -323,10 +328,14 @@ void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2)
 {
     Timer::perf performance(t2, "FillTriangle");
 
-    std::vector<std::vector<color2*>> screen(HEIGHT, std::vector<color2*>(WIDTH));
-    DrawLine(c0, c1, v0, v1, screen);
-    DrawLine(c1, c2, v1, v2, screen);
-    DrawLine(c2, c0, v2, v0, screen);
+    std::vector<std::vector<color2*>> frame(HEIGHT, std::vector<color2*>(WIDTH));
+    {
+        Timer::perf performance(t2, "Triangle frame");
+
+        DrawLine(c0, c1, v0, v1, frame);
+        DrawLine(c1, c2, v1, v2, frame);
+        DrawLine(c2, c0, v2, v0, frame);
+    }
 
     // Scanline Algorithm
 
@@ -338,9 +347,9 @@ void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2)
 
         for (int x = 0; x < WIDTH; ++x)
         {
-            if (screen[y][x] != nullptr)
+            if (frame[y][x] != nullptr)
             {
-                all_x_on_y[y].push_back(screen[y][x]);
+                all_x_on_y[y].push_back(frame[y][x]);
             }
         }
 
@@ -350,24 +359,39 @@ void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2)
         }
     }
 
+
+    std::vector<std::vector<color2*>>* filled = new std::vector<std::vector<color2*>>(HEIGHT, std::vector<color2*>(WIDTH));
+
     color2* x0 = nullptr;
     color2* x1 = nullptr;
     for (int y = 0; y < HEIGHT; ++y)
     {
         if (all_x_on_y[y].size() > 0)
         {
-            x0 = all_x_on_y[y][0];
+            x0 = all_x_on_y[y][0]; // TODO Could be Optimized
             x1 = all_x_on_y[y][all_x_on_y[y].size() - 1];
 
-            DrawVerticalLine(x0->c, x1->c, x0->pos, x1->pos);
+            DrawVerticalLine(x0->c, x1->c, x0->pos, x1->pos, filled);
         }
     }
-
+    for (int cy = 0; cy < HEIGHT; ++cy)
+    {
+        for (int cx = 0; cx < WIDTH; ++cx)
+        {
+            if ((*filled)[cy][cx] != nullptr)
+            {
+                SDL_SetRenderDrawColor(renderer, (*filled)[cy][cx]->c.r, (*filled)[cy][cx]->c.g, (*filled)[cy][cx]->c.b, 255);
+                SDL_RenderDrawPoint(renderer, (*filled)[cy][cx]->pos.x, (*filled)[cy][cx]->pos.y);
+            }
+        }
+    }
     for (int y = 0; y < HEIGHT; ++y)
     {
         for (int x = 0; x < WIDTH; ++x)
         {
-            delete screen[y][x];
+            delete frame[y][x];
+            delete (*filled)[y][x];
         }
     }
+    delete filled;
 }

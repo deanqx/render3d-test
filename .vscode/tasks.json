@@ -10,7 +10,7 @@
             },
             "command": "g++",
             "args": [
-                // "-O3", // Optimization
+                "-O3", // Optimization
                 "-o",
                 "render3d-test.exe",
                 "./src/*.cpp",
@@ -45,6 +45,7 @@
                 "-o",
                 "test.exe",
                 "test.cpp",
+                "-Iinclude",
                 "-g"
             ],
         },

@@ -64,6 +64,8 @@
         "string_view": "cpp",
         "numbers": "cpp",
         "sstream": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp"
     }
 }

@@ -1,0 +1,6 @@
+
+
+
+1.  115443us / 66681us = 173.1% // Removing Draw functions
+2.  115443us / 108652us = 106.3% // Replacing p0 = A / total;
+3.  108652us / 106281us = 102.2% // Replacing p1 = B * t; with p1 = 1.0 - p0;

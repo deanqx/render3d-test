@@ -246,9 +246,9 @@ int main(int argc, char* argv[])
             printf(title.str().c_str());
             frame = 0;
 
-            if (profile == 20)
+            if (profile == 1)
             {
-                t->print({ "Update", "HandleEvents", "FillTriangle", "DrawVerticalLine" });
+                t->print({});
                 break;
             }
 

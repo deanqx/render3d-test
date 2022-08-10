@@ -16,7 +16,12 @@
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
-                }
+                },
+                // {
+                //     "description": "Enable break on all exceptions",
+                //     "text": "catch throw",
+                //     "ignoreFailures": true
+                // }
             ],
         },
         {
@@ -28,7 +33,19 @@
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build: test",
-            "program": "${workspaceFolder}/test.exe"
-        }
+            "program": "${workspaceFolder}/test.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                // {
+                //     "description": "Enable break on all exceptions",
+                //     "text": "catch throw",
+                //     "ignoreFailures": true
+                // }
+            ],
+        },
     ],
 }
