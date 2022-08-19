@@ -47,6 +47,8 @@ struct mesh
 struct vec2
 {
     int x, y;
+
+    float dot(const vec2& v);
 };
 
 struct color

@@ -157,6 +157,11 @@ bool mesh::loadObjectFile(std::ifstream& stream)
     return 0;
 }
 
+float vec2::dot(const vec2& v)
+{
+    return x * v.x + y * v.y;
+}
+
 inline void color::convert(uint8_t* frame, const int& WIDTH, int x, int y)
 {
     const unsigned offset = 4 * y * WIDTH + 4 * x;
@@ -412,6 +417,7 @@ void render3d::FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2
                 c1.convert(local, WIDTH, x1, y);
 
                 DrawVerticalLine(c0, c1, { x0, y }, { x1, y });
+                // RENDER
             }
         }
     }

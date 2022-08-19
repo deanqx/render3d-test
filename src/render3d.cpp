@@ -86,23 +86,39 @@ void render3d::Render(float deltaTime)
                     vec3 sun{ 0.0f, 0.0f, -1.0f };
                     sun.normalize();
 
-                    float brightness = fabsf(normal.dot(sun));
+                    float brightness = 100.0f * fabsf(normal.dot(sun));
 
-                    FillTriangle(
-                        { (uint8_t)(255.0f * brightness), (uint8_t)(255.0f * brightness), (uint8_t)(255.0f * brightness) },
-                        { (uint8_t)(255.0f * brightness), (uint8_t)(255.0f * brightness), (uint8_t)(255.0f * brightness) },
-                        { (uint8_t)(255.0f * brightness), (uint8_t)(255.0f * brightness), (uint8_t)(255.0f * brightness) },
+                    color c[3] = {
+                        { (uint8_t)(brightness), (uint8_t)(brightness), (uint8_t)(brightness) },
+                        { (uint8_t)(brightness), (uint8_t)(brightness), (uint8_t)(brightness) },
+                        { (uint8_t)(brightness), (uint8_t)(brightness), (uint8_t)(brightness) } };
+
+
+                    // size_t max = 0;
+                    // float maxvalue = 0;
+                    // for (size_t i = 0; i < 3; ++i)
+                    // {
+                    //     float d;
+                    //     if (i == 2)
+                    //         d = acosf(triProj.p[i].normalized().dot(triProj.p[0].normalized()));
+                    //     else
+                    //         d = acosf(triProj.p[i].normalized().dot(triProj.p[i + 1].normalized()));
+
+                    //     if (d > maxvalue)
+                    //     {
+                    //         max = i;
+                    //         maxvalue = d;
+                    //     }
+                    // }
+
+                    c[0].r *= 2;
+                    c[0].g *= 2;
+                    c[0].b *= 2;
+
+                    FillTriangle(c[0], c[1], c[2],
                         { (int)triProj.p[0].x, (int)triProj.p[0].y },
                         { (int)triProj.p[1].x, (int)triProj.p[1].y },
                         { (int)triProj.p[2].x, (int)triProj.p[2].y });
-
-                    // FillTriangle(
-                    //     { 255, 0, 0 },
-                    //     { 0, 255, 0 },
-                    //     { 0, 0, 255 },
-                    //     { (int)triProj.p[0].x, (int)triProj.p[0].y },
-                    //     { (int)triProj.p[1].x, (int)triProj.p[1].y },
-                    //     { (int)triProj.p[2].x, (int)triProj.p[2].y });
 
                     // DrawTriangle({ 255, 255, 0 },
                     //     { (int)triProj.p[0].x, (int)triProj.p[0].y },
