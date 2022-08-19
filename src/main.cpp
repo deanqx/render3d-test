@@ -16,11 +16,11 @@ public:
     {
         objects.push_back(&meshCube);
         meshCube.rescale((float)WIDTH * 0.5f);
-        meshCube.origin = { 0.0f, 0.0f, 0.0f };
-        meshCube.position = { 0.0f, 0.0f, 5.0f };
+        meshCube.origin = {0.0f, 0.0f, 0.0f};
+        meshCube.position = {0.0f, 0.0f, 10.0f};
 
-        // std::ifstream file("./res/AK 47.obj");
-        std::ifstream file("./res/cube.obj");
+        std::ifstream file("./res/AK 47.obj");
+        // std::ifstream file("./res/cube.obj");
         if (meshCube.loadObjectFile(file))
             return 1;
 
@@ -59,7 +59,7 @@ public:
     }
 };
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     Timer::init();
 

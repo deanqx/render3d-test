@@ -11,7 +11,7 @@
             "command": "g++",
             "args": [
                 "-O3", // Optimization
-                // "-DRELEASE",
+                "-DRELEASE",
                 "-g",
                 "-o", 
                 "render3d-test.exe",

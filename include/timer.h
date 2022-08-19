@@ -160,12 +160,7 @@ public:
 #ifndef RELEASE
         printf("                       ---   Performance   ---\n");
         printf("       %       Time(us)       Total(us)       Runs           ID\n");
-
-        int64_t globalTime = 0;
-        for (int i = 0; i < current->sub.size(); ++i)
-        {
-            globalTime += current->sub[i]->totalTime;
-        }
+        // TODO Calculate Total(us) from children
 
         current->printp(hide);
 #endif
