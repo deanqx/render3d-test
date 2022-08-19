@@ -1,27 +1,42 @@
-#include <vector>
 #include <math.h>
 #include <iostream>
-#include "SDL.h"
-#include "gmath.h"
+#include <sstream>
+#include "render3d.h"
+#include "timer.h"
 
-SDL_Window* window = nullptr;
-SDL_Renderer* renderer = nullptr;
+#define RENDER SDL_UpdateTexture(screen, nullptr, frame, WIDTH * 4); SDL_RenderCopy(renderer, screen, nullptr, nullptr); SDL_RenderPresent(renderer);
 
-int WIDTH;
-int HEIGHT;
-
-Timer* t2;
-
-void INIT(SDL_Window* win, SDL_Renderer* ren, int w, int h, Timer* ti)
+mat4x4 mat4x4::operator*(const mat4x4& i)
 {
-    window = win;
-    renderer = ren;
-    WIDTH = w;
-    HEIGHT = h;
-    t2 = ti;
+    mat4x4 o;
+
+    for (int y = 0; y < 4; ++y)
+    {
+        for (int x = 0; x < 4; ++x)
+        {
+            for (int j = 0; j < 4; ++j)
+            {
+                o.m[x][y] += m[j][y] * i.m[x][j];
+            }
+        }
+    }
+
+    // o.m[0][0] += m[0][0] * i.m[0][0];
+    // o.m[0][0] += m[1][0] * i.m[0][1];
+    // o.m[0][0] += m[2][0] * i.m[0][2];
+
+    // o.m[1][0] += m[0][0] * i.m[1][0];
+    // o.m[1][0] += m[1][0] * i.m[1][1];
+    // o.m[1][0] += m[2][0] * i.m[1][2];
+
+    // o.m[0][1] += m[0][1] * i.m[0][0];
+    // o.m[0][1] += m[1][1] * i.m[0][1];
+    // o.m[0][1] += m[2][1] * i.m[0][2];
+
+    return o;
 }
 
-// TODO Add const
+// TODO Add const and inline
 float vec3::lenght()
 {
     return sqrtf(x * x + y * y + z * z);
@@ -29,8 +44,31 @@ float vec3::lenght()
 
 void vec3::normalize()
 {
-    float l = sqrtf(x * x + y * y + z * z);
-    x /= l; y /= l; z /= l;
+    float l = 1 / sqrtf(x * x + y * y + z * z);
+    if (l > 0.0f)
+    {
+        x *= l; y *= l; z *= l;
+    }
+}
+
+vec3 vec3::normalized()
+{
+    vec3 o = *this;
+
+    float l = 1 / sqrtf(x * x + y * y + z * z);
+    if (l > 0.0f)
+    {
+        o.x *= l; o.y *= l; o.z *= l;
+    }
+
+    return o;
+}
+
+void vec3::cross(const vec3& line1, const vec3& line2)
+{
+    x = line1.y * line2.z - line1.z * line2.y;
+    y = line1.z * line2.x - line1.x * line2.z;
+    z = line1.x * line2.y - line1.y * line2.x;
 }
 
 float vec3::dot(const vec3& v)
@@ -84,9 +122,53 @@ void mesh::rescale(float scaler)
     scale = { scaler, scaler, scaler };
 }
 
+bool mesh::loadObjectFile(std::ifstream& stream)
+{
+    if (stream.fail())
+        return 1;
+
+    std::vector<vec3> verts;
+
+    while (!stream.eof())
+    {
+        char line[128];
+        stream.getline(line, 128);
+
+        std::stringstream ss;
+        ss << line;
+
+        char type;
+
+        if (line[0] == 'v')
+        {
+            vec3 v;
+            ss >> type >> v.x >> v.y >> v.z;
+            verts.push_back(v);
+        }
+
+        if (line[0] == 'f')
+        {
+            int f[3];
+            ss >> type >> f[0] >> f[1] >> f[2];
+            tris.push_back({ verts[f[0] - 1], verts[f[1] - 1], verts[f[2] - 1] });
+        }
+    }
+
+    return 0;
+}
+
+inline void color::convert(uint8_t* frame, const int& WIDTH, int x, int y)
+{
+    const unsigned offset = 4 * y * WIDTH + 4 * x;
+    b = frame[offset];
+    g = frame[offset + 1];
+    r = frame[offset + 2];
+    a = frame[offset + 3];
+}
+
 std::vector<vec2> bresenham(vec2 begin, vec2 end)
 {
-    Timer::perf performance(t2, "besenham");
+    Timer::perf __besenham("besenham");
 
 
     vec2 p;
@@ -161,237 +243,178 @@ std::vector<vec2> bresenham(vec2 begin, vec2 end)
     return pos;
 }
 
-void DrawLine(color c, vec2 begin, vec2 end)
+void render3d::DrawVerticalLine(color c0, color c1, vec2 begin, vec2 end)
 {
-    Timer::perf performance(t2, "DrawLine(color, vec2, vec2)");
+    Timer::perf per("DrawVerticalLine");
 
-
-    int& px = begin.x; // positionX
-    int& py = begin.y; // positionY
-    float dx = (float)(std::abs(end.x) - std::abs(begin.x)); // deltaX
-    float dy = (float)(std::abs(end.y) - std::abs(begin.y)); // deltaY
-
-    int dirX, dirY; // directionX, directionY
-    if (dx >= 0.0f)
-        dirX = 1;
-    else
-        dirX = -1;
-    if (dy >= 0.0f)
-        dirY = 1;
-    else
-        dirY = -1;
-
-    dx = std::abs(dx);
-    dy = std::abs(dy);
-
-    SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, 255);
-    SDL_RenderDrawPoint(renderer, px, py);
-
-    if (dx < dy)
+    const float len = (float)end.x - begin.x;
+    const float t = 1.0f / len;
+    float A = len - 1.0f;
+    int B = 1;
+    float p0, p1;
+    uint8_t r, g, b;
+    for (; A > 0.0f; --A, ++B)
     {
-        py += dirY;
+        p0 = A * t;
+        p1 = (float)B * t;
+        r = (uint8_t)(p0 * (float)c0.r + p1 * (float)c1.r);
+        g = (uint8_t)(p0 * (float)c0.g + p1 * (float)c1.g);
+        b = (uint8_t)(p0 * (float)c0.b + p1 * (float)c1.b);
 
-        float error = dy * 0.5f;
-        for (float i = 0; i < dy; ++i, py += dirY)
-        {
-            error -= dx;
-            if (error > 0.0f)
-            {
-                SDL_RenderDrawPoint(renderer, px, py);
-            }
-            else
-            {
-                px += dirX;
-                SDL_RenderDrawPoint(renderer, px, py);
-                error += dy;
-            }
-        }
-    }
-    else
-    {
-        px += dirX;
-
-        float error = dx * 0.5f;
-        for (float i = 0; i < dx; ++i, px += dirX)
-        {
-            error -= dy;
-            if (error > 0.0f)
-            {
-                SDL_RenderDrawPoint(renderer, px, py);
-            }
-            else
-            {
-                py += dirY;
-                SDL_RenderDrawPoint(renderer, px, py);
-                error += dx;
-            }
-        }
+        setpixel(begin.x + B, begin.y, { r, g, b });
     }
 }
 
-// @return colors[y][x]
-void DrawLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<color2*>>& colors)
+inline void render3d::setpixel(const int x, const int y, const color c)
 {
+    setpixel(frame, x, y, c);
+}
+
+inline void render3d::setpixel(uint8_t* frame, const int x, const int y, const color c)
+{
+    const int offset = 4 * y * WIDTH + 4 * x;
+    frame[offset] = c.b;
+    frame[offset + 1] = c.g;
+    frame[offset + 2] = c.r;
+    frame[offset + 3] = c.a;
+}
+
+void render3d::DrawLine(color c, vec2 begin, vec2 end)
+{
+    Timer::perf __DrawLine1("DrawLine(color, vec2, vec2)");
+
+
+    std::vector<vec2> bresen = bresenham(begin, end);
+
+    for (int i = 0; i < bresen.size(); ++i)
+    {
+        setpixel(bresen[i].x, bresen[i].y, c);
+    }
+}
+
+void render3d::DrawLine(color c0, color c1, vec2 begin, vec2 end)
+{
+    Timer::perf profile("DrawLine(c0, c1, begin, end)");
+
     std::vector<vec2> bresen = bresenham(begin, end);
     const int last = bresen.size() - 1;
 
-    Timer::perf performance(t2, "DrawLine(color, color, vec2, vec2)");
-
-    SDL_SetRenderDrawColor(renderer, c0.r, c0.g, c0.b, 255);
-    SDL_RenderDrawPoint(renderer, bresen[0].x, bresen[0].y);
-    colors[bresen[0].y][bresen[0].x] = new color2{ { bresen[0].x, bresen[0].y }, { c0.r, c0.g, c0.b } };
-    SDL_SetRenderDrawColor(renderer, c1.r, c1.g, c1.b, 255);
-    SDL_RenderDrawPoint(renderer, bresen[last].x, bresen[last].y);
-    colors[bresen[last].y][bresen[last].x] = new color2{ { bresen[last].x, bresen[last].y }, { c1.r, c1.g, c1.b } };
+    setpixel(bresen[0].x, bresen[0].y, c0);
+    setpixel(bresen[last].x, bresen[last].y, c1);
 
     const float bresen_t = (float)bresen.size() - 1.0f;
     const float t = 1.0f / bresen_t;
     float A = bresen_t - 1.0f;
     int B = 1;
     float p0, p1;
-    int r, g, b;
     for (; A > 0.0f; --A, ++B)
     {
-        p0 = A * t;
-        p1 = B * t;
-        r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
-        g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
-        b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
+        color inter;
 
-        SDL_SetRenderDrawColor(renderer, r, g, b, 255);
-        SDL_RenderDrawPoint(renderer, bresen[B].x, bresen[B].y);
-        colors[bresen[B].y][bresen[B].x] = new color2{ { bresen[B].x, bresen[B].y }, { r, g, b } };
+        p0 = A * t;
+        p1 = (float)B * t;
+        inter.r = (uint8_t)(p0 * (float)c0.r + p1 * (float)c1.r);
+        inter.g = (uint8_t)(p0 * (float)c0.g + p1 * (float)c1.g);
+        inter.b = (uint8_t)(p0 * (float)c0.b + p1 * (float)c1.b);
+
+        setpixel(bresen[B].x, bresen[B].y, inter);
     }
 }
 
-void DrawVerticalLine(color c0, color c1, vec2 begin, vec2 end, std::vector<std::vector<color2*>>* colors)
+void render3d::DrawLine(uint8_t* local, color c0, color c1, vec2 begin, vec2 end)
 {
-    std::vector<vec2> bresen = bresenham(begin, end);
+    Timer::perf profile("DrawLine(local, c0, c1, begin, end)");
 
-    Timer::perf performance(t2, "DrawVerticalLine");
-
-    const float bresen_t = (float)bresen.size() - 1.0f;
-    const float t = 1.0f / bresen_t;
-    float A = bresen_t - 1.0f;
-    int B = 1;
-    float p0, p1;
-    int r, g, b;
-    for (; A > 0.0f; --A, ++B)
-    {
-        p0 = A * t;
-        p1 = B * t;
-        r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
-        g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
-        b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
-
-        (*colors)[bresen[B].y][bresen[B].x] = new color2{ { bresen[B].x, bresen[B].y }, { r, g, b } };
-    }
-}
-
-void DrawLine(color c0, color c1, vec2 begin, vec2 end)
-{
     std::vector<vec2> bresen = bresenham(begin, end);
     const int last = bresen.size() - 1;
 
-    SDL_SetRenderDrawColor(renderer, c0.r, c0.g, c0.b, 255);
-    SDL_RenderDrawPoint(renderer, bresen[0].x, bresen[0].y);
-    SDL_SetRenderDrawColor(renderer, c1.r, c1.g, c1.b, 255);
-    SDL_RenderDrawPoint(renderer, bresen[last].x, bresen[last].y);
-
-    const float bresen_t = (float)bresen.size() - 1.0f;
-    const float t = 1.0f / bresen_t;
-    float A = bresen_t - 1.0f;
-    int B = 1;
-    float p0, p1;
-    int r, g, b;
-    for (; A > 0.0f; --A, ++B)
     {
-        p0 = A * t;
-        p1 = B * t;
-        r = (int)(p0 * (float)c0.r + p1 * (float)c1.r);
-        g = (int)(p0 * (float)c0.g + p1 * (float)c1.g);
-        b = (int)(p0 * (float)c0.b + p1 * (float)c1.b);
+        Timer::perf profile("Interpolation");
 
-        SDL_SetRenderDrawColor(renderer, r, g, b, 255);
-        SDL_RenderDrawPoint(renderer, bresen[B].x, bresen[B].y);
+        setpixel(local, bresen[0].x, bresen[0].y, c0);
+        setpixel(bresen[0].x, bresen[0].y, c0);
+        setpixel(local, bresen[last].x, bresen[last].y, c1);
+        setpixel(bresen[last].x, bresen[last].y, c1);
+
+        const float bresen_t = (float)bresen.size() - 1.0f;
+        const float t = 1.0f / bresen_t;
+        float A = bresen_t - 1.0f;
+        int B = 1;
+        float p0, p1;
+        for (; A > 0.0f; --A, ++B)
+        {
+            color inter;
+
+            p0 = A * t;
+            p1 = (float)B * t;
+            inter.r = (uint8_t)(p0 * (float)c0.r + p1 * (float)c1.r);
+            inter.g = (uint8_t)(p0 * (float)c0.g + p1 * (float)c1.g);
+            inter.b = (uint8_t)(p0 * (float)c0.b + p1 * (float)c1.b);
+
+            setpixel(local, bresen[B].x, bresen[B].y, inter);
+            setpixel(bresen[B].x, bresen[B].y, inter);
+        }
     }
 }
 
-void DrawTriangle(color c, vec2 v0, vec2 v1, vec2 v2)
+void render3d::DrawTriangle(color c, vec2 v0, vec2 v1, vec2 v2)
 {
     DrawLine(c, v0, v1);
     DrawLine(c, v1, v2);
     DrawLine(c, v2, v0);
 }
 
-void FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2)
+void render3d::FillTriangle(color c0, color c1, color c2, vec2 v0, vec2 v1, vec2 v2)
 {
-    Timer::perf performance(t2, "FillTriangle");
+    Timer::perf __FillTriangle("FillTriangle()");
 
-    std::vector<std::vector<color2*>> frame(HEIGHT, std::vector<color2*>(WIDTH));
+    uint8_t* local = (uint8_t*)calloc(WIDTH * HEIGHT * 4, sizeof(uint8_t)); // frame[x][y] = b, g, r, a
+
     {
-        Timer::perf performance(t2, "Triangle frame");
+        Timer::perf __TriangleFrame("Triangle frame");
 
-        DrawLine(c0, c1, v0, v1, frame);
-        DrawLine(c1, c2, v1, v2, frame);
-        DrawLine(c2, c0, v2, v0, frame);
+        DrawLine(local, c0, c1, v0, v1);
+        DrawLine(local, c1, c2, v1, v2);
+        DrawLine(local, c2, c0, v2, v0);
     }
 
-    // Scanline Algorithm
-
-    std::vector<std::vector<color2*>> all_x_on_y(HEIGHT); // all_x_on_y[y][x]
-
-    for (int y = 0; y < HEIGHT; ++y)
     {
-        all_x_on_y[y].reserve(2);
+        Timer::perf __TriangleFrame("Scanline");
 
-        for (int x = 0; x < WIDTH; ++x)
+        // Scanline Algorithm
+
+        std::vector<std::vector<int>> all_x_on_y(HEIGHT); // all_x_on_y[y][x]
+
+        for (int y = 0; y < HEIGHT; ++y)
         {
-            if (frame[y][x] != nullptr)
+            for (int x = 0; x < WIDTH; ++x)
             {
-                all_x_on_y[y].push_back(frame[y][x]);
+                const unsigned offset = 4 * y * WIDTH + 4 * x;
+                if (local[offset + 3] > 0)
+                {
+                    all_x_on_y[y].reserve(2);
+                    all_x_on_y[y].push_back(x);
+                }
             }
         }
 
-        if (all_x_on_y[y].size() == 1)
+        int x0, x1;
+        for (int y = 0; y < HEIGHT; ++y)
         {
-            all_x_on_y[y].push_back(all_x_on_y[y][0]);
-        }
-    }
-
-
-    std::vector<std::vector<color2*>>* filled = new std::vector<std::vector<color2*>>(HEIGHT, std::vector<color2*>(WIDTH));
-
-    color2* x0 = nullptr;
-    color2* x1 = nullptr;
-    for (int y = 0; y < HEIGHT; ++y)
-    {
-        if (all_x_on_y[y].size() > 0)
-        {
-            x0 = all_x_on_y[y][0]; // TODO Could be Optimized
-            x1 = all_x_on_y[y][all_x_on_y[y].size() - 1];
-
-            DrawVerticalLine(x0->c, x1->c, x0->pos, x1->pos, filled);
-        }
-    }
-    for (int cy = 0; cy < HEIGHT; ++cy)
-    {
-        for (int cx = 0; cx < WIDTH; ++cx)
-        {
-            if ((*filled)[cy][cx] != nullptr)
+            if (all_x_on_y[y].size() > 0)
             {
-                SDL_SetRenderDrawColor(renderer, (*filled)[cy][cx]->c.r, (*filled)[cy][cx]->c.g, (*filled)[cy][cx]->c.b, 255);
-                SDL_RenderDrawPoint(renderer, (*filled)[cy][cx]->pos.x, (*filled)[cy][cx]->pos.y);
+                x0 = all_x_on_y[y][0]; // TODO Get position
+                x1 = all_x_on_y[y][all_x_on_y[y].size() - 1];
+
+                color c0;
+                color c1;
+                c0.convert(local, WIDTH, x0, y);
+                c1.convert(local, WIDTH, x1, y);
+
+                DrawVerticalLine(c0, c1, { x0, y }, { x1, y });
             }
         }
     }
-    for (int y = 0; y < HEIGHT; ++y)
-    {
-        for (int x = 0; x < WIDTH; ++x)
-        {
-            delete frame[y][x];
-            delete (*filled)[y][x];
-        }
-    }
-    delete filled;
+
+    free(local);
 }

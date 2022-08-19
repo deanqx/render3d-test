@@ -11,10 +11,11 @@
             "command": "g++",
             "args": [
                 "-O3", // Optimization
-                "-o",
+                // "-DRELEASE",
+                "-g",
+                "-o", 
                 "render3d-test.exe",
                 "./src/*.cpp",
-                "-g",
                 "./res/icon.res",
                 "-Iinclude",
                 "-Iinclude/SDL2",
@@ -42,11 +43,15 @@
             },
             "command": "g++",
             "args": [
+                "-g",
                 "-o",
                 "test.exe",
                 "test.cpp",
                 "-Iinclude",
-                "-g"
+                "-Iinclude/SDL2",
+                "-Llib",
+                "-lSDL2main",
+                "-lSDL2"
             ],
         },
         {

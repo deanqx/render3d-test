@@ -4,15 +4,14 @@
 #include <string>
 #include <chrono>
 #include <algorithm>
+#include <math.h>
 #include <vector>
 #include <sstream>
 
 class Timer
 {
-    std::vector<std::string> hide;
     struct scope
     {
-        Timer* t;
         scope* header;
         std::vector<scope*> sub;
         int layer = 0;
@@ -23,7 +22,7 @@ class Timer
 
         float percent;
 
-        scope(Timer* t, const std::string ID, scope* header) : t(t), ID(ID), header(header) {}
+        scope(const std::string ID, scope* header) : ID(ID), header(header) {}
         ~scope()
         {
             for (int i = 0; i < sub.size(); ++i)
@@ -32,16 +31,16 @@ class Timer
             }
         }
 
-        // std::string getTree()
-        // {
-        //     std::stringstream id;
-        //     if (header != nullptr)
-        //         id << header->getTree() << "/";
-        //     id << ID;
+        std::string getTree()
+        {
+            std::stringstream id;
+            if (header != nullptr)
+                id << header->getTree() << "/";
+            id << ID;
 
-        //     return std::move(id.str());
-        // }
-        void print()
+            return std::move(id.str());
+        }
+        void printp(std::vector<std::string>& hide)
         {
             if (sub.size() > 0)
             {
@@ -49,9 +48,9 @@ class Timer
                 temp.reserve(sub.size());
                 for (int i = 0; i < sub.size();)
                 {
-                    for (int h = 0; h < t->hide.size(); ++h)
+                    for (int h = 0; h < hide.size(); ++h)
                     {
-                        if (t->hide[h] == sub[i]->ID)
+                        if (hide[h] == sub[i]->ID)
                         {
                             goto Continue;
                         }
@@ -86,9 +85,7 @@ class Timer
                         tree << ' ';
                     if (sub[i]->layer > 1)
                         tree << (char)192;
-                    
 
-                    // tree << ceilf(sub[i]->percent * 100.0f) * 0.01f << '%';
                     tree << ceilf(sub[i]->percent * 100.0f) * 0.01f;
 
                     std::stringstream spaces;
@@ -97,63 +94,85 @@ class Timer
                     spaces << sub[i]->ID;
 
                     printf("%-15s%-15lld%-16lld%-15lld%s\n", tree.str().c_str(), sub[i]->totalTime / sub[i]->runs, sub[i]->totalTime, sub[i]->runs, spaces.str().c_str());
-                    sub[i]->print();
+                    sub[i]->printp(hide);
                 }
             }
         }
     };
 
-    scope* current = new scope(this, "", nullptr); // (= Main header)
+    inline static scope* current; // (= Main header)
 
 public:
     class perf
     {
         std::chrono::time_point<std::chrono::high_resolution_clock> startTimepoint;
-        Timer* t;
         scope* local = nullptr;
+        bool stopped = false;
 
     public:
-        perf(Timer*& t, const std::string id) : t(t)
+        perf(const std::string id)
         {
-            for (int i = 0; i < t->current->sub.size(); ++i)
+#ifndef RELEASE
+            for (int i = 0; i < current->sub.size(); ++i)
             {
-                if (t->current->sub[i]->ID == id)
+                if (current->sub[i]->ID == id)
                 {
-                    local = t->current->sub[i];
-                    t->current = local;
+                    local = current->sub[i];
+                    current = local;
                     goto Continue;
                 }
             }
 
-            local = new scope(t, id, t->current);
-            t->current = local;
+            local = new scope(id, current);
+            current = local;
             local->layer = local->header->layer + 1;
             local->header->sub.push_back(local);
 
         Continue:
             startTimepoint = std::chrono::high_resolution_clock::now();
+#endif
         }
         ~perf()
         {
+#ifndef RELEASE
             auto end = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()).time_since_epoch().count();
             auto start = std::chrono::time_point_cast<std::chrono::microseconds>(startTimepoint).time_since_epoch().count();
 
-            local->totalTime += end - start;
-            ++local->runs;
-            t->current = local->header;
+            if (!stopped)
+            {
+                stopped = true;
+
+                local->totalTime += end - start;
+                ++local->runs;
+                current = local->header;
+            }
+#endif
         }
     };
 
-    void print(std::vector<std::string> hide)
+    static void init()
     {
-        printf("                 ---   Performance   ---                 \n");
-        printf("   %           Time(us)       Total(us)       Runs           ID\n");
-
-        current->print();
+        current = new scope("", nullptr);
     }
 
-    ~Timer()
+    static void printp(std::vector<std::string> hide)
     {
-        delete current;
+#ifndef RELEASE
+        printf("                       ---   Performance   ---\n");
+        printf("       %       Time(us)       Total(us)       Runs           ID\n");
+
+        int64_t globalTime = 0;
+        for (int i = 0; i < current->sub.size(); ++i)
+        {
+            globalTime += current->sub[i]->totalTime;
+        }
+
+        current->printp(hide);
+#endif
+    }
+
+    static void quit()
+    {
+        free(current);
     }
 };
