@@ -10,8 +10,8 @@
             },
             "command": "g++",
             "args": [
-                "-O3", // Optimization
-                "-DRELEASE",
+                // "-O3", // Optimization
+                // "-DRELEASE",
                 "-g",
                 "-o", 
                 "render3d-test.exe",

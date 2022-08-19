@@ -12,8 +12,8 @@ class Timer
 {
     struct scope
     {
-        scope* header;
-        std::vector<scope*> sub;
+        scope *header;
+        std::vector<scope *> sub;
         int layer = 0;
 
         const std::string ID = "";
@@ -22,7 +22,7 @@ class Timer
 
         float percent;
 
-        scope(const std::string ID, scope* header) : ID(ID), header(header) {}
+        scope(const std::string ID, scope *header) : ID(ID), header(header) {}
         ~scope()
         {
             for (int i = 0; i < sub.size(); ++i)
@@ -31,20 +31,24 @@ class Timer
             }
         }
 
-        std::string getTree()
-        {
-            std::stringstream id;
-            if (header != nullptr)
-                id << header->getTree() << "/";
-            id << ID;
-
-            return std::move(id.str());
-        }
-        void printp(std::vector<std::string>& hide)
+        void recalc()
         {
             if (sub.size() > 0)
             {
-                std::vector<scope*> temp;
+                int64_t sum = 0;
+                for (scope *s : sub)
+                {
+                    s->recalc();
+                    sum += s->totalTime;
+                }
+                totalTime = sum;
+            }
+        }
+        void printp(std::vector<std::string> &hide)
+        {
+            if (sub.size() > 0)
+            {
+                std::vector<scope *> temp;
                 temp.reserve(sub.size());
                 for (int i = 0; i < sub.size();)
                 {
@@ -71,15 +75,11 @@ class Timer
                 {
                     sub[i]->percent = (float)(sub[i]->totalTime * 10000LL / overallTime) * 0.01f;
                 }
-                std::sort(sub.begin(), sub.end(), [](const scope* a, const scope* b) { return a->percent > b->percent; });
+                std::sort(sub.begin(), sub.end(), [](const scope *a, const scope *b)
+                          { return a->percent > b->percent; });
 
                 for (int i = 0; i < sub.size(); ++i)
                 {
-                    // std::stringstream tree;
-                    // for (int l = 2; l < sub[i]->layer; ++l)
-                    //     tree << (char)179;
-                    // if (sub[i]->layer > 1)
-                    //     tree << (char)195;
                     std::stringstream tree;
                     for (int l = 2; l < sub[i]->layer; ++l)
                         tree << ' ';
@@ -100,13 +100,13 @@ class Timer
         }
     };
 
-    inline static scope* current; // (= Main header)
+    inline static scope *current; // (= Main header)
 
 public:
     class perf
     {
         std::chrono::time_point<std::chrono::high_resolution_clock> startTimepoint;
-        scope* local = nullptr;
+        scope *local = nullptr;
         bool stopped = false;
 
     public:
@@ -155,13 +155,14 @@ public:
         current = new scope("", nullptr);
     }
 
-    static void printp(std::vector<std::string> hide)
+    static void printp(std::vector<std::string> hide, bool recalc = false)
     {
 #ifndef RELEASE
         printf("                       ---   Performance   ---\n");
         printf("       %       Time(us)       Total(us)       Runs           ID\n");
-        // TODO Calculate Total(us) from children
 
+        if (recalc)
+            current->recalc();
         current->printp(hide);
 #endif
     }

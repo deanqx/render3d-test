@@ -62,7 +62,7 @@ void render3d::FillTriangle(color c, vec2 v0, vec2 v1, vec2 v2)
 
         for (auto &xlist : all_x_on_y)
         {
-            std::sort(xlist.begin(), xlist.end(), [](vec2 *&a, vec2 *&b)
+            std::sort(xlist.begin(), xlist.end(), [](const vec2 *a, const vec2 *b)
                       { return a->x < b->x; });
         }
     }
