@@ -33,27 +33,27 @@ void render3d::Render(float deltaTime)
 {
     Timer::perf __Render("Render");
 
-    std::vector<tri> raster;
-
+    for (mesh *obj : objects)
     {
-        Timer::perf profile("Rasterize");
+        mat4x4 matTrans = mat4x4::translation(0.0f, 0.0f, 32.0f);
+        mat4x4 matWorld = obj->rotation * matTrans;
 
-        for (mesh *obj : objects)
+        std::vector<tri> raster;
+
         {
-            for (tri t : obj->tris)
+            Timer::perf profile("Rasterize");
+
+            for (tri triTrans : obj->tris)
             {
-                tri triProj, triTrans, triRotatedZX, temp; // triProjected, triTranslated
+                tri triProj; // triProjected, triTransformed
 
-                // Rotation
-                triRotatedZX.p[0] = t.p[0] * obj->rotation;
-                triRotatedZX.p[1] = t.p[1] * obj->rotation;
-                triRotatedZX.p[2] = t.p[2] * obj->rotation;
+                // triTrans.p[0] = t.p[0] * matWorld;
+                // triTrans.p[1] = t.p[1] * matWorld;
+                // triTrans.p[2] = t.p[2] * matWorld;
 
-                // Position
-                triTrans = triRotatedZX;
-                triTrans.p[0] = triRotatedZX.p[0] + obj->position;
-                triTrans.p[1] = triRotatedZX.p[1] + obj->position;
-                triTrans.p[2] = triRotatedZX.p[2] + obj->position;
+                triTrans.p[0] = (triTrans.p[0] * obj->rotation) + obj->position;
+                triTrans.p[1] = (triTrans.p[1] * obj->rotation) + obj->position;
+                triTrans.p[2] = (triTrans.p[2] * obj->rotation) + obj->position;
 
                 // Normal
                 vec3 normal;
@@ -65,7 +65,7 @@ void render3d::Render(float deltaTime)
                     vec3 sun{0.0f, 0.0f, -1.0f};
                     sun.normalize();
 
-                    uint8_t brightness = (uint8_t)(255.0f * fabsf(normal.dot(sun)));
+                    uint8_t brightness = (uint8_t)(255.0f * fmax(0.1f, normal.dot(sun)));
                     triProj.c = {brightness, brightness, brightness};
 
                     // Project triangles from 3D --> 2D
@@ -73,13 +73,15 @@ void render3d::Render(float deltaTime)
                     triProj.p[1] = triTrans.p[1] * matProj;
                     triProj.p[2] = triTrans.p[2] * matProj;
 
+                    triProj.p[0] /= triProj.p[0].w;
+                    triProj.p[1] /= triProj.p[1].w;
+                    triProj.p[2] /= triProj.p[2].w;
+
                     // Scale into view
-                    triProj.p[0].x += 1.0f;
-                    triProj.p[0].y += 1.0f;
-                    triProj.p[1].x += 1.0f;
-                    triProj.p[1].y += 1.0f;
-                    triProj.p[2].x += 1.0f;
-                    triProj.p[2].y += 1.0f;
+                    vec3 offsetView = {1.0f, 1.0f, 0.0f};
+                    triProj.p[0] += offsetView;
+                    triProj.p[1] += offsetView;
+                    triProj.p[2] += offsetView;
                     triProj.p[0].x *= 0.5f * (float)WIDTH;
                     triProj.p[0].y *= 0.5f * (float)HEIGHT;
                     triProj.p[1].x *= 0.5f * (float)WIDTH;
@@ -90,28 +92,27 @@ void render3d::Render(float deltaTime)
                     raster.push_back(triProj);
                 }
             }
-        }
 
-        std::sort(raster.begin(), raster.end(), [](tri &t0, tri &t1)
-                  {
+            std::sort(raster.begin(), raster.end(), [](tri &t0, tri &t1)
+                      {
                 const float z0 = (t0.p[0].z + t0.p[1].z + t0.p[2].z) / 3.0f;
                 const float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
                 return z0 > z1; });
+        }
+
+        for (tri &triProj : raster)
+        {
+            // FillTriangle(triProj.c,
+            //              {(int)triProj.p[0].x, (int)triProj.p[0].y},
+            //              {(int)triProj.p[1].x, (int)triProj.p[1].y},
+            //              {(int)triProj.p[2].x, (int)triProj.p[2].y});
+
+            DrawTriangle({ 255, 255, 0 },
+                { (int)triProj.p[0].x, (int)triProj.p[0].y },
+                { (int)triProj.p[1].x, (int)triProj.p[1].y },
+                { (int)triProj.p[2].x, (int)triProj.p[2].y });
+        }
     }
-
-    for (tri &triProj : raster)
-    {
-        FillTriangle(triProj.c,
-                     {(int)triProj.p[0].x, (int)triProj.p[0].y},
-                     {(int)triProj.p[1].x, (int)triProj.p[1].y},
-                     {(int)triProj.p[2].x, (int)triProj.p[2].y});
-
-        // DrawTriangle({ 255, 255, 0 },
-        //     { (int)triProj.p[0].x, (int)triProj.p[0].y },
-        //     { (int)triProj.p[1].x, (int)triProj.p[1].y },
-        //     { (int)triProj.p[2].x, (int)triProj.p[2].y });
-    }
-
 
     SDL_UpdateTexture(screen, nullptr, frame, WIDTH * 4);
     SDL_RenderCopy(renderer, screen, nullptr, nullptr);
@@ -132,19 +133,7 @@ render3d::render3d(const float fov, const float viewDistance, const char *title,
 
     screen = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
 
-    float pZnear = 0.1f;
-    float pZfar = viewDistance;
-    float pFov = fov;
-    float pAspectRatio = (float)WIDTH / (float)HEIGHT;
-    float pFovScale = 1.0f / tanf(pFov * 0.5f / 180.0f * 3.14159f); // Radian
-    float pZScale = pZfar / (pZfar - pZnear);
-    float pCameraOffset = -pZnear * pZScale; // (-pZfar * pZnear) / (pZfar - pZnear)
-
-    matProj.m[0][0] = pAspectRatio * pFovScale;
-    matProj.m[1][1] = pFovScale;
-    matProj.m[2][2] = pZScale;
-    matProj.m[3][2] = pCameraOffset;
-    matProj.m[2][3] = 1;
+    matProj = mat4x4::projection((float)WIDTH / (float)HEIGHT, fov, viewDistance);
 }
 
 void render3d::GameLoop()

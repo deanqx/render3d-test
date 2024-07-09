@@ -16,9 +16,7 @@ inline int getheight(const vec2 (&v)[3], int &offset)
     {
         if (v[i].y > v[max].y)
             max = i;
-
-        // TODO Try: else if
-        if (v[i].y < v[min].y)
+        else if (v[i].y < v[min].y)
             min = i;
     }
 

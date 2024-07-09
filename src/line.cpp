@@ -41,7 +41,7 @@ inline size_t bresenham(vec2 begin, vec2 end, vec2 *&pos)
             error -= dx;
             if (error > 0.0f)
             {
-                pos[i] = p; // TODO WARNING: pos[i] = { p.x, p.y };
+                pos[i] = p;
             }
             else
             {
